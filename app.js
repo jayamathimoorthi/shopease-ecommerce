@@ -17,13 +17,30 @@ const submitLogin = document.getElementById("submit-login");
 const loginMessage = document.getElementById("login-message");
 
 
-// =========================
-// Load Products
-// =========================
+// ============================
+// SHOP NOW
+// ============================
+
+function scrollToProducts() {
+  const section = document.getElementById("products");
+
+  if (section) {
+    section.scrollIntoView({
+      behavior: "smooth"
+    });
+  }
+}
+
+
+// ============================
+// LOAD PRODUCTS
+// ============================
 
 async function loadProducts() {
 
-  productGrid.innerHTML = "<p>Loading products...</p>";
+  productGrid.innerHTML = `
+    <p>Loading products...</p>
+  `;
 
   try {
 
@@ -32,45 +49,50 @@ async function loadProducts() {
     );
 
     if (!response.ok) {
-      throw new Error("Failed to load products");
+      throw new Error("API request failed");
     }
 
     const data = await response.json();
 
-    products = data.products;
+    products = data.products || [];
 
     displayProducts(products);
 
   } catch (error) {
 
-    productGrid.innerHTML = `
-      <p>
-        ⚠️ Unable to load products.
-        Please check your internet connection.
-      </p>
-    `;
+    console.error(error);
 
+    productGrid.innerHTML = `
+      <div class="product-card">
+        <h3>Unable to load products</h3>
+        <p>Please check your internet connection.</p>
+        <button onclick="loadProducts()">
+          Try Again
+        </button>
+      </div>
+    `;
   }
 }
 
 
-// =========================
-// Display Products
-// =========================
+// ============================
+// DISPLAY PRODUCTS
+// ============================
 
 function displayProducts(items) {
 
   productGrid.innerHTML = "";
 
-  if (items.length === 0) {
+  if (!items || items.length === 0) {
 
-    productGrid.innerHTML =
-      "<p>No products found.</p>";
+    productGrid.innerHTML = `
+      <p>No products found.</p>
+    `;
 
     return;
   }
 
-  items.forEach(product => {
+  items.forEach(function(product) {
 
     const card = document.createElement("article");
 
@@ -103,77 +125,83 @@ function displayProducts(items) {
 }
 
 
-// =========================
-// Search + Filter + Sort
-// =========================
+// ============================
+// FILTER PRODUCTS
+// ============================
 
 function applyFilters() {
 
   const searchText =
     searchInput.value.toLowerCase().trim();
 
-  const category =
+  const selectedCategory =
     categorySelect.value;
 
-  let filtered = products.filter(product => {
+  let result = products.filter(function(product) {
 
-    const matchesSearch =
-      product.title
-        .toLowerCase()
-        .includes(searchText);
+    const title =
+      String(product.title).toLowerCase();
 
-    const matchesCategory =
-      category === "all" ||
-      product.category === category;
+    const category =
+      String(product.category).toLowerCase();
 
-    return matchesSearch && matchesCategory;
+    const searchMatch =
+      title.includes(searchText);
+
+    const categoryMatch =
+      selectedCategory === "all" ||
+      category === selectedCategory;
+
+    return searchMatch && categoryMatch;
 
   });
 
 
-  // Sorting
+  // SORT
 
   if (sortSelect.value === "low") {
 
-    filtered.sort(
-      (a, b) => a.price - b.price
-    );
+    result.sort(function(a, b) {
+      return a.price - b.price;
+    });
 
   }
 
-  if (sortSelect.value === "high") {
+  else if (sortSelect.value === "high") {
 
-    filtered.sort(
-      (a, b) => b.price - a.price
-    );
-
-  }
-
-  if (sortSelect.value === "name") {
-
-    filtered.sort(
-      (a, b) =>
-        a.title.localeCompare(b.title)
-    );
+    result.sort(function(a, b) {
+      return b.price - a.price;
+    });
 
   }
 
+  else if (sortSelect.value === "name") {
 
-  displayProducts(filtered);
+    result.sort(function(a, b) {
+      return a.title.localeCompare(b.title);
+    });
 
+  }
+
+
+  displayProducts(result);
 }
 
 
-// =========================
-// Add To Cart
-// =========================
+// ============================
+// ADD TO CART
+// ============================
 
 function addToCart(productId) {
 
   const product =
-    products.find(item => item.id === productId);
+    products.find(function(item) {
+      return item.id === productId;
+    });
 
-  if (!product) return;
+  if (!product) {
+    return;
+  }
 
   cart.push(product);
 
@@ -182,13 +210,26 @@ function addToCart(productId) {
   updateCart();
 
   alert("Product added to cart! 🛒");
-
 }
 
 
-// =========================
-// Save Cart
-// =========================
+// ============================
+// REMOVE FROM CART
+// ============================
+
+function removeFromCart(index) {
+
+  cart.splice(index, 1);
+
+  saveCart();
+
+  updateCart();
+}
+
+
+// ============================
+// SAVE CART
+// ============================
 
 function saveCart() {
 
@@ -196,13 +237,12 @@ function saveCart() {
     "shopease-cart",
     JSON.stringify(cart)
   );
-
 }
 
 
-// =========================
-// Update Cart
-// =========================
+// ============================
+// UPDATE CART
+// ============================
 
 function updateCart() {
 
@@ -212,20 +252,20 @@ function updateCart() {
 
   if (cart.length === 0) {
 
-    cartItems.innerHTML =
-      "<p>Your cart is empty.</p>";
+    cartItems.innerHTML = `
+      <p>Your cart is empty.</p>
+    `;
 
     cartTotal.textContent = "0";
 
     return;
   }
 
-
   let total = 0;
 
-  cart.forEach((product, index) => {
+  cart.forEach(function(product, index) {
 
-    total += product.price;
+    total += Number(product.price);
 
     const item =
       document.createElement("div");
@@ -249,172 +289,177 @@ function updateCart() {
 
   cartTotal.textContent =
     total.toFixed(2);
+}
+
+
+// ============================
+// LOGIN
+// ============================
+
+function openLogin() {
+
+  loginModal.style.display = "flex";
 
 }
 
 
-// =========================
-// Remove From Cart
-// =========================
+function closeLogin() {
 
-function removeFromCart(index) {
+  loginModal.style.display = "none";
 
-  cart.splice(index, 1);
+}
+
+
+function loginUser() {
+
+  const email =
+    document.getElementById("email").value.trim();
+
+  const password =
+    document.getElementById("password").value.trim();
+
+
+  if (email === "" || password === "") {
+
+    loginMessage.textContent =
+      "Please enter email and password.";
+
+    return;
+  }
+
+
+  localStorage.setItem(
+    "shopease-user",
+    email
+  );
+
+
+  loginMessage.textContent =
+    "Login successful! ✅";
+
+  loginBtn.textContent =
+    "Logged In";
+
+}
+
+
+// ============================
+// CHECKOUT
+// ============================
+
+function checkout() {
+
+  if (cart.length === 0) {
+
+    alert("Your cart is empty!");
+
+    return;
+  }
+
+  alert(
+    "Order placed successfully! 🎉"
+  );
+
+  cart = [];
 
   saveCart();
 
   updateCart();
+}
+
+
+// ============================
+// EVENT LISTENERS
+// ============================
+
+if (searchInput) {
+
+  searchInput.addEventListener(
+    "input",
+    applyFilters
+  );
 
 }
 
 
-// =========================
-// Login Modal
-// =========================
+if (categorySelect) {
 
-loginBtn.addEventListener(
-  "click",
-  () => {
+  categorySelect.addEventListener(
+    "change",
+    applyFilters
+  );
 
-    loginModal.style.display = "flex";
-
-  }
-);
+}
 
 
-closeModal.addEventListener(
-  "click",
-  () => {
+if (sortSelect) {
 
-    loginModal.style.display = "none";
+  sortSelect.addEventListener(
+    "change",
+    applyFilters
+  );
 
-  }
-);
+}
+
+
+if (loginBtn) {
+
+  loginBtn.addEventListener(
+    "click",
+    openLogin
+  );
+
+}
+
+
+if (closeModal) {
+
+  closeModal.addEventListener(
+    "click",
+    closeLogin
+  );
+
+}
+
+
+if (submitLogin) {
+
+  submitLogin.addEventListener(
+    "click",
+    loginUser
+  );
+
+}
 
 
 window.addEventListener(
   "click",
-  (event) => {
+  function(event) {
 
     if (event.target === loginModal) {
-
-      loginModal.style.display = "none";
-
+      closeLogin();
     }
 
   }
 );
 
 
-// =========================
-// Login Simulation
-// =========================
+const checkoutButton =
+  document.getElementById("checkout-btn");
 
-submitLogin.addEventListener(
-  "click",
-  () => {
+if (checkoutButton) {
 
-    const email =
-      document.getElementById("email").value;
-
-    const password =
-      document.getElementById("password").value;
-
-
-    if (!email || !password) {
-
-      loginMessage.textContent =
-        "Please enter email and password.";
-
-      return;
-    }
-
-
-    localStorage.setItem(
-      "shopease-user",
-      email
-    );
-
-
-    loginMessage.textContent =
-      "Login successful! ✅";
-
-    loginBtn.textContent =
-      "Logged In";
-
-  }
-);
-
-
-// =========================
-// Checkout
-// =========================
-
-document
-  .getElementById("checkout-btn")
-  .addEventListener(
+  checkoutButton.addEventListener(
     "click",
-    () => {
-
-      if (cart.length === 0) {
-
-        alert("Your cart is empty!");
-
-        return;
-      }
-
-      alert(
-        "Order placed successfully! 🎉"
-      );
-
-      cart = [];
-
-      saveCart();
-
-      updateCart();
-
-    }
+    checkout
   );
-
-
-// =========================
-// Events
-// =========================
-
-searchInput.addEventListener(
-  "input",
-  applyFilters
-);
-
-categorySelect.addEventListener(
-  "change",
-  applyFilters
-);
-
-sortSelect.addEventListener(
-  "change",
-  applyFilters
-);
-
-
-// =========================
-// Shop Now
-// =========================
-
-function scrollToProducts() {
-
-  document
-    .getElementById("products")
-    .scrollIntoView({
-      behavior: "smooth"
-    });
 
 }
 
 
-// =========================
-// Start App
-// =========================
+// ============================
+// START APPLICATION
+// ============================
 
 loadProducts();
 
